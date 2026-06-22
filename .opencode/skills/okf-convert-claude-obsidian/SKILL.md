@@ -23,6 +23,8 @@ Use this skill to migrate an existing claude-obsidian vault (`wiki/`, typed fold
      --dest <output-path> \
      --dry-run
    ```
+
+   To preserve wikilinks instead of converting them, add `--keep-wikilinks`.
 2. Show the user the preview (first 10 files + total count).
 3. If the user approves, run the converter without `--dry-run`.
 4. Run `okf-validate` on the resulting bundle and report findings.
@@ -43,7 +45,9 @@ Use this skill to migrate an existing claude-obsidian vault (`wiki/`, typed fold
 
 ## Behavior
 
-- Keeps Obsidian wikilinks untouched.
+- Keeps Obsidian wikilinks as-is by default, but can rewrite them to relative markdown links (recommended when targeting GitHub or static sites) with `--keep-wikilinks` omitted.
+- Rewrites `[[Concept Name]]` to `[Concept Name](path/to/concept-name.md)` and `[[Concept Name|label]]` to `[label](path/to/concept-name.md)`.
+- Leaves unresolved wikilinks unchanged so `okf-validate` can flag them.
 - Synthesizes `title` from H1 or filename, `description` from first paragraph, `tags` from `#tag` syntax, `timestamp` from file mtime.
 - Copies existing `wiki/index.md`, `wiki/log.md`, `wiki/hot.md` if present.
 

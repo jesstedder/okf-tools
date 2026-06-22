@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable
+import os
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +45,9 @@ def extract_wikilinks(text: str) -> Iterable[Link]:
     """Extract Obsidian wikilinks from text."""
     for match in _WIKILINK_RE.finditer(text):
         target, label = match.groups()
-        yield Link(raw=match.group(0), target=target.strip(), kind="wikilink", label=(label or target).strip())
+        target = target.strip()
+        label = (label or Path(target).name).strip()
+        yield Link(raw=match.group(0), target=target, kind="wikilink", label=label)
 
 
 def extract_all(text: str) -> list[Link]:
@@ -98,6 +102,34 @@ def resolve_link(link: Link, source_concept_id: str, existing_ids: set[str]) -> 
         if basename == target_lower or basename == target_lower.replace(" ", "-"):
             return _find_existing(cid, existing_ids)
     return None
+
+
+def _relative_link(source_concept_id: str, target_concept_id: str) -> str:
+    """Return a relative markdown link path from source to target concept."""
+    source_dir = Path(source_concept_id).parent
+    target_path = Path(target_concept_id).with_suffix(".md")
+    if source_dir == Path("."):
+        return target_path.as_posix()
+    relpath = Path(os.path.relpath(target_path, source_dir))
+    return relpath.as_posix()
+
+
+def rewrite_wikilinks(text: str, source_concept_id: str, existing_ids: set[str]) -> str:
+    """Replace resolvable Obsidian wikilinks with relative markdown links.
+
+    Unresolved wikilinks are left unchanged.
+    """
+    def repl(match: re.Match[str]) -> str:
+        target = match.group(1).strip()
+        label = (match.group(2) or Path(target).name).strip()
+        link = Link(raw=match.group(0), target=target, kind="wikilink", label=label)
+        resolved = resolve_link(link, source_concept_id, existing_ids)
+        if resolved is None:
+            return match.group(0)
+        rel = _relative_link(source_concept_id, resolved)
+        return f"[{label}]({rel})"
+
+    return _WIKILINK_RE.sub(repl, text)
 
 
 def _normalize_path(path: str) -> str:

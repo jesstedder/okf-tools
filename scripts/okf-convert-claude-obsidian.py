@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from okf_frontmatter import render
+from okf_links import rewrite_wikilinks
 
 
 FOLDER_TYPE_MAP = {
@@ -58,7 +59,7 @@ def _timestamp_fallback(path: Path) -> str:
     return datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
 
 
-def _convert_file(src: Path, dest_root: Path, rel_dir: Path, dry_run: bool) -> dict | None:
+def _prepare_conversion(src: Path, rel_dir: Path) -> tuple[str, dict, str]:
     text = src.read_text(encoding="utf-8")
 
     # Very simple frontmatter extraction; if present, preserve it
@@ -88,27 +89,30 @@ def _convert_file(src: Path, dest_root: Path, rel_dir: Path, dry_run: bool) -> d
         "timestamp": timestamp,
     }
 
-    dest_rel = rel_dir / f"{_slugify(filename)}.md"
-    dest_path = dest_root / dest_rel
+    concept_id = (rel_dir / _slugify(filename)).as_posix()
+    return concept_id, frontmatter, body
 
-    if dry_run:
-        return {
-            "dest": dest_path,
-            "frontmatter": frontmatter,
-        }
 
+def _write_concept(dest_path: Path, frontmatter: dict, body: str) -> None:
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     dest_path.write_text(render(frontmatter, body), encoding="utf-8")
-    return {"dest": dest_path, "frontmatter": frontmatter}
 
 
-def convert_vault(source: Path, dest: Path, *, dry_run: bool) -> list[dict]:
+def _copy_and_rewrite(src: Path, dest: Path, source_root_id: str, existing_ids: set[str], keep_wikilinks: bool) -> None:
+    text = src.read_text(encoding="utf-8")
+    if not keep_wikilinks:
+        text = rewrite_wikilinks(text, source_root_id, existing_ids)
+    dest.write_text(text, encoding="utf-8")
+
+
+def convert_vault(source: Path, dest: Path, *, dry_run: bool, keep_wikilinks: bool) -> list[dict]:
     source = source.expanduser().resolve()
     dest = dest.expanduser().resolve()
 
     wiki_root = source / "wiki" if (source / "wiki").is_dir() else source
 
-    results: list[dict] = []
+    # Phase 1: discover concepts and compute ids
+    entries: list[tuple[Path, Path, str, dict, str]] = []  # src, rel_dir, concept_id, fm, body
     for md_path in sorted(wiki_root.rglob("*.md")):
         rel = md_path.relative_to(wiki_root)
         if any(part.startswith(".") for part in rel.parts[:-1]):
@@ -116,22 +120,41 @@ def convert_vault(source: Path, dest: Path, *, dry_run: bool) -> list[dict]:
         if rel.name.lower() in {"index.md", "log.md", "hot.md"}:
             continue
 
-        converted = _convert_file(md_path, dest, rel.parent, dry_run)
-        if converted:
-            results.append(converted)
+        rel_dir = rel.parent
+        concept_id, frontmatter, body = _prepare_conversion(md_path, rel_dir)
+        entries.append((md_path, rel_dir, concept_id, frontmatter, body))
+
+    existing_ids = {concept_id for _, _, concept_id, _, _ in entries}
+
+    # Phase 2: write concepts (rewriting wikilinks when resolvable)
+    results: list[dict] = []
+    for md_path, rel_dir, concept_id, frontmatter, body in entries:
+        if not keep_wikilinks:
+            body = rewrite_wikilinks(body, concept_id, existing_ids)
+
+        dest_rel = rel_dir / f"{_slugify(md_path.stem)}.md"
+        dest_path = dest / dest_rel
+
+        if dry_run:
+            results.append({"dest": dest_path, "frontmatter": frontmatter})
+            continue
+
+        _write_concept(dest_path, frontmatter, body)
+        results.append({"dest": dest_path, "frontmatter": frontmatter})
 
     if not dry_run:
-        # Create OKF index/log/hot from claude-obsidian ones if present
+        dest.mkdir(parents=True, exist_ok=True)
+        # Create/reuse OKF index/log/hot
         if (wiki_root / "index.md").exists():
-            (dest / "index.md").write_text((wiki_root / "index.md").read_text(encoding="utf-8"), encoding="utf-8")
+            _copy_and_rewrite(wiki_root / "index.md", dest / "index.md", "", existing_ids, keep_wikilinks)
         else:
             (dest / "index.md").write_text(f"# {dest.name}\n\nConverted from claude-obsidian vault.\n", encoding="utf-8")
         if (wiki_root / "log.md").exists():
-            (dest / "log.md").write_text((wiki_root / "log.md").read_text(encoding="utf-8"), encoding="utf-8")
+            _copy_and_rewrite(wiki_root / "log.md", dest / "log.md", "", existing_ids, keep_wikilinks)
         else:
             (dest / "log.md").write_text("# Log\n\nConverted vault.\n", encoding="utf-8")
         if (wiki_root / "hot.md").exists():
-            (dest / "hot.md").write_text((wiki_root / "hot.md").read_text(encoding="utf-8"), encoding="utf-8")
+            _copy_and_rewrite(wiki_root / "hot.md", dest / "hot.md", "", existing_ids, keep_wikilinks)
 
     return results
 
@@ -141,6 +164,7 @@ def main() -> int:
     parser.add_argument("--source", required=True, help="Source claude-obsidian vault path")
     parser.add_argument("--dest", required=True, help="Destination OKF bundle path")
     parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing")
+    parser.add_argument("--keep-wikilinks", action="store_true", help="Preserve Obsidian wikilinks instead of rewriting to markdown links")
     args = parser.parse_args()
 
     dest = Path(args.dest).expanduser().resolve()
@@ -148,7 +172,7 @@ def main() -> int:
         print(f"Error: destination is not empty: {dest}", file=sys.stderr)
         return 1
 
-    results = convert_vault(Path(args.source), dest, dry_run=args.dry_run)
+    results = convert_vault(Path(args.source), dest, dry_run=args.dry_run, keep_wikilinks=args.keep_wikilinks)
 
     for result in results[:10]:
         print(f"{'WOULD CREATE' if args.dry_run else 'CREATED'}: {result['dest']}")

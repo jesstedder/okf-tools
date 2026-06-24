@@ -17,12 +17,14 @@ Use this skill to create a new OKF knowledge bundle.
 
 1. Confirm the target directory path with the user if not provided.
 2. Ensure the target directory is empty (to avoid overwriting existing notes).
-3. Run the scaffold script:
+3. Run the scaffold script from the okf-tools repo root:
    ```bash
    # Linux/macOS:
-   bash /var/home/jess/src/okf-tools/scripts/okf-init.sh <path> [--name <display-name>]
+   bash scripts/okf-init.sh <path> [--name <display-name>]
+   ```
+   ```powershell
    # Windows:
-   pwsh /var/home/jess/src/okf-tools/scripts/okf-init.ps1 -Path <path> [-Name <display-name>]
+   pwsh scripts/okf-init.ps1 -Path <path> [-Name <display-name>]
    ```
 4. Verify the bundle was created:
    ```bash

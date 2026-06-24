@@ -15,21 +15,22 @@ Use this skill to migrate an existing claude-obsidian vault (`wiki/`, typed fold
 
 ## Steps
 
-1. Run a dry-run preview:
+1. Run a dry-run preview from the okf-tools repo root:
    ```bash
    # Linux/macOS:
-   bash /var/home/jess/src/okf-tools/scripts/okf-convert-claude-obsidian.sh \
+   bash scripts/okf-convert-claude-obsidian.sh \
      --source <vault-path> \
      --dest <output-path> \
      --dry-run
+   ```
+   ```powershell
    # Windows:
-   pwsh /var/home/jess/src/okf-tools/scripts/okf-convert-claude-obsidian.ps1 \
+   pwsh scripts/okf-convert-claude-obsidian.ps1 \
      -Source <vault-path> -Dest <output-path> -DryRun
    ```
-
    To preserve wikilinks instead of converting them, add `--keep-wikilinks` (bash) or `-KeepWikilinks` (PowerShell).
 2. Show the user the preview (first 10 files + total count).
-3. If the user approves, run the converter without `--dry-run`.
+3. If the user approves, run the converter without `--dry-run` / `-DryRun`.
 4. Run `okf-validate` on the resulting bundle and report findings.
 
 ## Folder-to-type mapping
@@ -48,8 +49,7 @@ Use this skill to migrate an existing claude-obsidian vault (`wiki/`, typed fold
 
 ## Behavior
 
-- Keeps Obsidian wikilinks as-is by default, but can rewrite them to relative markdown links (recommended when targeting GitHub or static sites) with `--keep-wikilinks` omitted.
-- Rewrites `[[Concept Name]]` to `[Concept Name](path/to/concept-name.md)` and `[[Concept Name|label]]` to `[label](path/to/concept-name.md)`.
+- Rewrites `[[Concept Name]]` to `[Concept Name](path/to/concept-name.md)` and `[[Concept Name|label]]` to `[label](path/to/concept-name.md)` by default.
 - Leaves unresolved wikilinks unchanged so `okf-validate` can flag them.
 - Synthesizes `title` from H1 or filename, `description` from first paragraph, `tags` from `#tag` syntax, `timestamp` from file mtime.
 - Copies existing `wiki/index.md`, `wiki/log.md`, `wiki/hot.md` if present.

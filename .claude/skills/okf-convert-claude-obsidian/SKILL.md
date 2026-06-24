@@ -17,14 +17,17 @@ Use this skill to migrate an existing claude-obsidian vault (`wiki/`, typed fold
 
 1. Run a dry-run preview:
    ```bash
-   cd /var/home/jess/src/okf-tools
-   uv run scripts/okf-convert-claude-obsidian.py \
+   # Linux/macOS:
+   bash /var/home/jess/src/okf-tools/scripts/okf-convert-claude-obsidian.sh \
      --source <vault-path> \
      --dest <output-path> \
      --dry-run
+   # Windows:
+   pwsh /var/home/jess/src/okf-tools/scripts/okf-convert-claude-obsidian.ps1 \
+     -Source <vault-path> -Dest <output-path> -DryRun
    ```
 
-   To preserve wikilinks instead of converting them, add `--keep-wikilinks`.
+   To preserve wikilinks instead of converting them, add `--keep-wikilinks` (bash) or `-KeepWikilinks` (PowerShell).
 2. Show the user the preview (first 10 files + total count).
 3. If the user approves, run the converter without `--dry-run`.
 4. Run `okf-validate` on the resulting bundle and report findings.

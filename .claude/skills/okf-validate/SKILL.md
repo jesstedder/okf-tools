@@ -18,8 +18,10 @@ Use this skill to lint an OKF bundle before using or migrating it.
 1. Resolve the bundle path.
 2. Run the validator:
    ```bash
-   cd /var/home/jess/src/okf-tools
-   uv run scripts/okf-validate.py <bundle-path>
+   # Linux/macOS:
+   bash /var/home/jess/src/okf-tools/scripts/okf-validate.sh <bundle-path>
+   # Windows:
+   pwsh /var/home/jess/src/okf-tools/scripts/okf-validate.ps1 -Bundle <bundle-path>
    ```
 3. Report the findings. If any are present, guide the user to fix them before proceeding.
 

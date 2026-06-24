@@ -18,8 +18,10 @@ Use this skill to retrieve answers from an OKF bundle without requiring Obsidian
 1. Resolve the bundle path.
 2. Run the query tool:
    ```bash
-   cd /var/home/jess/src/okf-tools
-   uv run scripts/okf-query.py --bundle <bundle-path> --query "<question>" [--max 10]
+   # Linux/macOS:
+   bash /var/home/jess/src/okf-tools/scripts/okf-query.sh --bundle <bundle-path> --query "<question>" [--max 10]
+   # Windows:
+   pwsh /var/home/jess/src/okf-tools/scripts/okf-query.ps1 -Bundle <bundle-path> -Query "<question>" [-Max 10]
    ```
 3. Read the returned `hot.md` content if `hot_exists` is true.
 4. Read `index.md` if needed.

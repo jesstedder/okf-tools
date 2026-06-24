@@ -18,13 +18,17 @@ Use this skill to add a new source, reference, or concept to an OKF bundle.
 1. Confirm the bundle path, source, and concept type.
 2. Run the ingest tool:
    ```bash
-   cd /var/home/jess/src/okf-tools
-   uv run scripts/okf-ingest.py \
+   # Linux/macOS:
+   bash /var/home/jess/src/okf-tools/scripts/okf-ingest.sh \
      --bundle <bundle-path> \
      --source <file-or-url> \
      --type <type> \
      [--title "Override Title"] \
      [--tags tag1,tag2]
+   # Windows:
+   pwsh /var/home/jess/src/okf-tools/scripts/okf-ingest.ps1 \
+     -Bundle <bundle-path> -Source <file-or-url> -Type <type> \
+     [-Title "Override Title"] [-Tags tag1,tag2]
    ```
 3. Verify the new concept file, index link, and log entry.
 4. Run `okf-validate` on the bundle.
